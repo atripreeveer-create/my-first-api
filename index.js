@@ -28,10 +28,32 @@ app.get('/', (req, res) => {
 
 app.get('/health', async (req, res) => {
   try {
-    await pool.query('SELECT 1');
-    res.json({ status: 'healthy', database: 'connected' });
-  } catch (err) {
-    res.json({ status: 'healthy', database: 'disconnected' });
+    const cacheKey = 'health-status';
+
+    // 1. check cache
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return res.json({
+        source: 'cache',
+        data: cached
+      });
+    }
+
+    // 2. generate response
+    const data = { status: 'healthy' };
+
+    // 3. store in Redis (expire in 60 seconds)
+    await redis.set(cacheKey, data, { ex: 60 });
+
+    return res.json({
+      source: 'server',
+      data: data
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      error: error.message
+    });
   }
 });
 
