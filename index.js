@@ -36,9 +36,20 @@ app.get('/health', async (req, res) => {
 });
 
 app.get('/redis-test', async (req, res) => {
-  await redis.set('test', 'Hello from Redis');
-  const value = await redis.get('test');
-  res.json({ redis: value });
+  try {
+    await redis.set('test', 'Hello from Redis');
+    const value = await redis.get('test');
+
+    res.json({
+      success: true,
+      value: value
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
