@@ -18,6 +18,31 @@ const redis = new Redis({
 app.use(cors());
 app.use(express.json());
 
+app.use(async (req, res, next) => {
+  try {
+    const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    const key = `rate_limit:${ip}`;
+
+    const requests = await redis.get(key);
+
+    if (requests && requests >= 10) {
+      return res.status(429).json({
+        error: "Too many requests, please try again later"
+      });
+    }
+
+    if (requests) {
+      await redis.set(key, requests + 1, { ex: 60 });
+    } else {
+      await redis.set(key, 1, { ex: 60 });
+    }
+
+    next();
+  } catch (error) {
+    next();
+  }
+});
+
 app.get('/', (req, res) => {
   res.json({
     message: 'سحابتك تعمل بنجاح مع قاعدة البيانات',
